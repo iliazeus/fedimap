@@ -1,0 +1,202 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+  </head>
+  <script src="https://unpkg.com/cytoscape@3.25.0/dist/cytoscape.min.js"></script>
+  <script src="ap.js"></script>
+  <style>
+    #container {
+      position: absolute;
+      top: 0;
+      left: 0;
+      z-index: -1;
+      margin: 0;
+      padding: 0;
+      width: 100%;
+      height: 100%;
+      overflow: hidden;
+    }
+
+    #error {
+      display: none;
+      color: red;
+    }
+
+    #status {
+      display: none;
+      color: black;
+    }
+  </style>
+  <script>
+    window.onload = async () => {
+      const _fetch = window.fetch;
+      window.fetch = (url, opts) =>
+        _fetch(url, { ...opts, signal: AbortSignal.timeout(5000) }).catch(() =>
+          _fetch("https://corsproxy.io/?" + encodeURIComponent(url), {
+            ...opts,
+            signal: AbortSignal.timeout(5000),
+          })
+        );
+
+      const followingIds = new Map();
+      const followerIds = new Map();
+
+      const ctx = new APContext();
+
+      const cy = cytoscape({
+        container: document.getElementById("container"),
+        minZoom: 0.5,
+        maxZoom: 2,
+        style: [
+          {
+            selector: "node",
+            style: {
+              label: "data(preferredUsername)",
+              "background-image": (el) =>
+                el.data("icon") &&
+                "https://corsproxy.io/?" +
+                  encodeURIComponent(el.data("icon").url),
+              "background-image-crossorigin": "anonymous",
+              "background-fit": "contain",
+            },
+          },
+          {
+            selector: "node.loading",
+            style: {
+              label: (el) => "⏳ " + el.data("preferredUsername"),
+            },
+          },
+          {
+            selector: "edge",
+            style: {
+              "curve-style": "bezier",
+              "target-arrow-shape": "triangle",
+            },
+          },
+        ],
+      });
+
+      window.cy = cy;
+
+      const addEdge = (fromId, toId) => {
+        if (cy.$id(fromId).empty() || cy.$id(toId).empty()) return;
+
+        const edgeId = fromId + "::" + toId;
+        if (cy.$id(edgeId).nonempty()) return;
+
+        cy.add({
+          group: "edges",
+          data: { id: edgeId, source: fromId, target: toId },
+        });
+      };
+
+      const loadEdges = async (profile) => {
+        for await (const follower of ctx.collection(profile.followers)) {
+          followerIds.get(profile.id).add(ctx.id(follower));
+
+          const v = followingIds.get(ctx.id(follower)) ?? new Set();
+          v.add(profile.id);
+          followingIds.set(ctx.id(follower), v);
+
+          addEdge(ctx.id(follower), profile.id);
+        }
+
+        for await (const following of ctx.collection(profile.following)) {
+          followingIds.get(profile.id).add(ctx.id(following));
+
+          const v = followerIds.get(ctx.id(following)) ?? new Set();
+          v.add(profile.id);
+          followerIds.set(ctx.id(following), v);
+
+          addEdge(profile.id, ctx.id(following));
+        }
+
+        cy.$id(profile.id).removeClass("loading");
+      };
+
+      const addProfile = async (profile, { log } = {}) => {
+        log?.(`loading profile`);
+
+        profile = await ctx.object(profile);
+
+        console.log(profile);
+
+        if (cy.$id(profile.id).nonempty()) return;
+
+        cy.add({ group: "nodes", data: profile, classes: ["loading"] });
+        cy.center(cy.$id(profile.id));
+
+        log?.(`adding preloaded edges`);
+
+        const profileFollowing = followingIds.get(profile.id);
+        if (profileFollowing) {
+          for (const toId of profileFollowing) addEdge(profile.id, toId);
+        } else {
+          followingIds.set(profile.id, new Set());
+        }
+
+        const profileFollowers = followerIds.get(profile.id);
+        if (profileFollowers) {
+          for (const fromId of profileFollowers) addEdge(fromId, profile.id);
+        } else {
+          followerIds.set(profile.id, new Set());
+        }
+
+        cy.$id(profile.id)
+          .layout({
+            name: "random",
+            boundingBox: {
+              x1: -cy.width() / 8,
+              y1: -cy.height() / 8,
+              x2: cy.width() / 8,
+              y2: cy.height() / 8,
+            },
+            animate: true,
+            fit: true,
+          })
+          .run();
+
+        loadEdges(profile).catch(console.error);
+      };
+
+      const input = document.getElementById("profile");
+      const form = document.getElementById("form");
+      const error = document.getElementById("error");
+      const status = document.getElementById("status");
+
+      form.onsubmit = (e) => {
+        e.preventDefault();
+
+        input.disabled = true;
+        error.style.display = "none";
+        status.style.display = "none";
+
+        addProfile(input.value, {
+          log: (s) => {
+            status.style.display = "unset";
+            status.innerText = s;
+          },
+        })
+          .catch((e) => {
+            error.innerText = String(e);
+            error.style.display = "unset";
+          })
+          .finally(() => {
+            status.style.display = "none";
+            input.disabled = false;
+            input.focus();
+          });
+      };
+    };
+  </script>
+  <body>
+    <form id="form">
+      <input id="profile" placeholder="Profile URL" />
+    </form>
+    <div id="error"></div>
+    <div id="status"></div>
+    <div id="container"></div>
+  </body>
+</html>
