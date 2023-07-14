@@ -135,9 +135,8 @@
             profileNode.removeClass("stub");
             profileNode.addClass("loading");
           } else {
-            profileNode.remove();
-            cy.add({ data: profile, classes: ["loading"] });
-            profileNode = cy.$id(profile.id);
+            profileNode.addClass("loading");
+            profileNode.connectedEdges().addClass("stub");
           }
 
           profileNode
@@ -177,14 +176,8 @@
                 data: { id: edgeId, source: profile.id, target: ap.id(follow) },
               });
               edge = cy.$id(edgeId);
-            } else if (edge.hasClass("stub")) {
-              edge.removeClass("stub");
             } else {
-              edge.remove();
-              cy.add({
-                data: { id: edgeId, source: profile.id, target: ap.id(follow) },
-              });
-              edge = cy.$id(edgeId);
+              edge.removeClass("stub");
             }
 
             loadedFollows += 1;
@@ -219,18 +212,8 @@
                 },
               });
               edge = cy.$id(edgeId);
-            } else if (edge.hasClass("stub")) {
-              edge.removeClass("stub");
             } else {
-              edge.remove();
-              cy.add({
-                data: {
-                  id: edgeId,
-                  source: ap.id(follower),
-                  target: profile.id,
-                },
-              });
-              edge = cy.$id(edgeId);
+              edge.removeClass("stub");
             }
 
             loadedFollowers += 1;
