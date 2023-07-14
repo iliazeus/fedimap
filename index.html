@@ -138,7 +138,14 @@
           } else {
             profileNode.removeClass("error");
             profileNode.addClass("loading");
-            profileNode.connectedEdges().addClass("stub");
+
+            profileNode
+              .connectedEdges()
+              .filter(
+                (e) =>
+                  e.target().hasClass("stub") || e.source().hasClass("stub")
+              )
+              .addClass("stub");
           }
 
           profileNode
