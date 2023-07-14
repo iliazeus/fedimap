@@ -68,6 +68,12 @@
             },
           },
           {
+            selector: "node.error",
+            style: {
+              label: (el) => "‼️ " + el.data("preferredUsername"),
+            },
+          },
+          {
             selector: "edge",
             style: {
               "curve-style": "bezier",
@@ -95,27 +101,34 @@
       };
 
       const loadEdges = async (profile) => {
-        for await (const follower of ctx.collection(profile.followers)) {
-          followerIds.get(profile.id).add(ctx.id(follower));
+        try {
+          cy.$id(profile.id).addClass("loading");
 
-          const v = followingIds.get(ctx.id(follower)) ?? new Set();
-          v.add(profile.id);
-          followingIds.set(ctx.id(follower), v);
+          for await (const follower of ctx.collection(profile.followers)) {
+            followerIds.get(profile.id).add(ctx.id(follower));
 
-          addEdge(ctx.id(follower), profile.id);
+            const v = followingIds.get(ctx.id(follower)) ?? new Set();
+            v.add(profile.id);
+            followingIds.set(ctx.id(follower), v);
+
+            addEdge(ctx.id(follower), profile.id);
+          }
+
+          for await (const following of ctx.collection(profile.following)) {
+            followingIds.get(profile.id).add(ctx.id(following));
+
+            const v = followerIds.get(ctx.id(following)) ?? new Set();
+            v.add(profile.id);
+            followerIds.set(ctx.id(following), v);
+
+            addEdge(profile.id, ctx.id(following));
+          }
+        } catch (error) {
+          cy.$id(profile.id).addClass("error");
+          throw error;
+        } finally {
+          cy.$id(profile.id).removeClass("loading");
         }
-
-        for await (const following of ctx.collection(profile.following)) {
-          followingIds.get(profile.id).add(ctx.id(following));
-
-          const v = followerIds.get(ctx.id(following)) ?? new Set();
-          v.add(profile.id);
-          followerIds.set(ctx.id(following), v);
-
-          addEdge(profile.id, ctx.id(following));
-        }
-
-        cy.$id(profile.id).removeClass("loading");
       };
 
       const addProfile = async (profile, { log } = {}) => {
@@ -133,7 +146,7 @@
 
         if (cy.$id(profile.id).nonempty()) return;
 
-        cy.add({ group: "nodes", data: profile, classes: ["loading"] });
+        cy.add({ group: "nodes", data: profile });
         cy.center(cy.$id(profile.id));
 
         log?.(`adding preloaded edges`);
