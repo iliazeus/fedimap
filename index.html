@@ -47,6 +47,13 @@
             },
           },
           {
+            selector: "node:selected",
+            style: {
+              "border-width": "2px",
+              "border-color": "darkblue",
+            },
+          },
+          {
             selector: "node.stub",
             style: {
               display: "none",
@@ -126,6 +133,9 @@
           log(`loading profile`);
 
           profileNode = cy.$id(profile.id);
+          if (profileNode.hasClass("loading")) return;
+
+          profileNode.scratch("signal", signal);
 
           if (profileNode.empty()) {
             cy.add({ data: profile, classes: ["loading"] });
@@ -234,6 +244,7 @@
           throw error;
         } finally {
           profileNode?.removeClass("loading");
+          profileNode?.removeScratch("signal");
         }
       };
 
@@ -276,8 +287,24 @@
           button.onclick = null;
           button.innerText = "Dismiss";
           button.onclick = () => task.remove();
-        } finally {
         }
+      };
+
+      window.onkeyup = (e) => {
+        if (e.target !== document.body) return;
+        if (e.code !== "Delete") return;
+        e.preventDefault();
+
+        const eles = cy
+          .$("node:selected")
+          .filter((el) => !el.hasClass("loading"));
+
+        eles.addClass("stub");
+        eles.forEach((el) => {
+          if (el.neighborhood("node").every((el) => el.hasClass("stub"))) {
+            el.remove();
+          }
+        });
       };
     };
   </script>
