@@ -11,13 +11,10 @@ class APContext {
       retryCount <= opts?.maxRetryCount ?? 0;
       retryCount += 1
     ) {
-      response = await globalThis.fetch(
-        "https://corsproxy.io/?" + encodeURIComponent(url),
-        {
-          ...opts,
-          signal: opts?.timeout && AbortSignal.timeout?.(opts.timeout),
-        }
-      );
+      response = await globalThis.fetch(url, {
+        ...opts,
+        signal: opts?.timeout && AbortSignal.timeout?.(opts.timeout),
+      });
 
       if (response.ok) return response;
 
