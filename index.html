@@ -133,7 +133,11 @@
 
       const addProfile = async (profile, { log } = {}) => {
         try {
-          await window.fetch("https://corsproxy.io", { method: "head" });
+          await window.fetch(
+            "https://corsproxy.io/?" +
+              encodeURIComponent("https://www.google.com"),
+            { method: "head" }
+          );
         } catch {
           throw new Error("corsproxy.io is not accessible");
         }
