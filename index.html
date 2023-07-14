@@ -31,21 +31,20 @@
   </style>
   <script>
     window.onload = async () => {
-      const _fetch = window.fetch;
-      window.fetch = (url, opts) =>
-        _fetch(url, { ...opts, signal: AbortSignal.timeout(5000) }).catch(() =>
-          _fetch("https://corsproxy.io/?" + encodeURIComponent(url), {
+      const ctx = new APContext({
+        fetch: (url, opts) =>
+          APContext.niceFetch(url, {
             ...opts,
-            signal: AbortSignal.timeout(5000),
-          })
-        );
+            timeout: 5000,
+            corsProxyPrefix: "https://corsproxy.io/?",
+            maxRetryCount: 30,
+          }),
+      });
 
       const followingIds = new Map();
       const followerIds = new Map();
 
-      const ctx = new APContext();
-
-      const cy = cytoscape({
+      const cy = (window.cy = cytoscape({
         container: document.getElementById("container"),
         minZoom: 0.5,
         maxZoom: 2,
@@ -76,9 +75,12 @@
             },
           },
         ],
-      });
+      }));
 
-      window.cy = cy;
+      cy.on("dblclick", (e) => {
+        if (!e.target.isNode()) return;
+        window.open(e.target.data("id"), "_blank");
+      });
 
       const addEdge = (fromId, toId) => {
         if (cy.$id(fromId).empty() || cy.$id(toId).empty()) return;
@@ -117,6 +119,12 @@
       };
 
       const addProfile = async (profile, { log } = {}) => {
+        try {
+          await window.fetch("https://corsproxy.io", { method: "head" });
+        } catch {
+          throw new Error("corsproxy.io is not accessible");
+        }
+
         log?.(`loading profile`);
 
         profile = await ctx.object(profile);
@@ -166,6 +174,8 @@
       const error = document.getElementById("error");
       const status = document.getElementById("status");
 
+      input.focus();
+
       form.onsubmit = (e) => {
         e.preventDefault();
 
@@ -179,6 +189,9 @@
             status.innerText = s;
           },
         })
+          .then(() => {
+            input.value = "";
+          })
           .catch((e) => {
             error.innerText = String(e);
             error.style.display = "unset";
@@ -192,8 +205,23 @@
     };
   </script>
   <body>
+    <div>
+      <small>
+        <p>
+          Type or paste the URL or ID of a profile, then click "Add" or press
+          Enter.
+        </p>
+        <p>
+          Double click or double tap a node to open the profile in a new tab.
+        </p>
+        <p>
+          Each profile has to be added manually; this app will <em>not</em> load
+          them automatically, it only shows the connections.
+        </p>
+      </small>
+    </div>
     <form id="form">
-      <input id="profile" placeholder="Profile URL" />
+      <input focused id="profile" placeholder="Profile URL" />
       <input type="submit" value="Add" />
     </form>
     <div id="error"></div>

@@ -1,10 +1,56 @@
 class APContext {
+  static niceFetch = async (url, opts) => {
+    if (opts?.corsProxyPrefix) {
+      url = opts.corsProxyPrefix + encodeURIComponent(uri);
+    }
+
+    let response;
+
+    for (
+      let retryCount = 0;
+      retryCount <= opts?.maxRetryCount ?? 0;
+      retryCount += 1
+    ) {
+      response = await globalThis.fetch(
+        "https://corsproxy.io/?" + encodeURIComponent(url),
+        {
+          ...opts,
+          signal: opts?.timeout && AbortSignal.timeout?.(opts.timeout),
+        }
+      );
+
+      if (response.ok) return response;
+
+      if (response.status === 429 || response.status >= 500) {
+        const retryAfter = response.headers.get("retry-after");
+
+        if (!retryAfter) {
+          continue;
+        }
+
+        const retryAfterMs = Number(retryAfter) * 1000;
+        if (Number.isNaN(retryAfterMs)) {
+          retryAfterMs = new Date(retryAfter).valueOf() - Date.now();
+        }
+
+        await new Promise((cb) => setTimeout(cb, retryAfterMs));
+        continue;
+      }
+
+      return response;
+    }
+
+    return response;
+  };
+
   #cache;
   #maxCacheSize;
+  #fetch;
 
-  constructor(cacheSize = 1024) {
+  constructor(opts = { cacheSize: 1024, fetch: APContext.niceFetch }) {
     this.#cache = new Map();
-    this.#maxCacheSize = cacheSize;
+    this.#maxCacheSize = opts.cacheSize;
+    this.#fetch = opts.fetch;
   }
 
   #cacheGet(key, force) {
@@ -39,7 +85,7 @@ class APContext {
 
     const origin = new URL(id.includes(":") ? id : "https://" + id).origin;
 
-    const response = await fetch(
+    const response = await this.#fetch(
       origin + "/.well-known/webfinger?resource=acct:" + encodeURIComponent(id)
     );
 
@@ -78,7 +124,7 @@ class APContext {
 
     const headers = { ...opts.headers, accept: "application/activity+json" };
 
-    const response = await fetch(ref, { ...opts, headers });
+    const response = await this.#fetch(ref, { ...opts, headers });
     value = await response.json();
 
     if ("error" in value) throw new Error(value.error);
@@ -104,7 +150,7 @@ class APContext {
     const headers = { ...opts.headers };
     if (typeof mediaType === "string") headers.accept = mediaType;
 
-    const response = await fetch(url, { ...opts, headers });
+    const response = await this.#fetch(url, { ...opts, headers });
     blob = await response.blob();
 
     return this.#cacheSet(url, blob);
