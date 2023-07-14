@@ -1,7 +1,7 @@
 class APContext {
   static niceFetch = async (url, opts) => {
     if (opts?.corsProxyPrefix) {
-      url = opts.corsProxyPrefix + encodeURIComponent(uri);
+      url = opts.corsProxyPrefix + encodeURIComponent(url);
     }
 
     let response;
