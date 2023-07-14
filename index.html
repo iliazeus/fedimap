@@ -133,8 +133,10 @@
           } else if (profileNode.hasClass("stub")) {
             profileNode.data(profile);
             profileNode.removeClass("stub");
+            profileNode.removeClass("error");
             profileNode.addClass("loading");
           } else {
+            profileNode.removeClass("error");
             profileNode.addClass("loading");
             profileNode.connectedEdges().addClass("stub");
           }
