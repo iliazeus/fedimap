@@ -18,8 +18,11 @@ class APContext {
 
       if (response.ok) return response;
 
-      if (response.status === 429 || response.status >= 500) {
-        const retryAfter = response.headers.get("retry-after");
+      if (response.status === 429 || response.status === 503) {
+        const retryAfter =
+          response.headers.get("retry-after") ??
+          response.headers.get("ratelimit-reset") ??
+          response.headers.get("x-ratelimit-reset");
 
         if (!retryAfter) {
           continue;
