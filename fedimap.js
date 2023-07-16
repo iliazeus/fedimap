@@ -13,17 +13,29 @@ class FediMap {
     this.corsProxyPrefix = corsProxyPrefix;
 
     cy.on("mouseover", "node", (e) => {
+      cy.startBatch();
+
+      e.target.addClass("hover");
+
       e.target
         .connectedEdges()
         .filter((el) => !el.hasClass("stub"))
-        .addClass("highlight");
+        .addClass("node-hover");
+
+      cy.endBatch();
     });
 
     cy.on("mouseout", "node", (e) => {
+      cy.startBatch();
+
+      e.target.removeClass("hover");
+
       e.target
         .connectedEdges()
         .filter((el) => !el.hasClass("stub"))
-        .removeClass("highlight");
+        .removeClass("node-hover");
+
+      cy.endBatch();
     });
 
     cy.on("dblclick", "node", (e) => {
@@ -58,6 +70,8 @@ class FediMap {
 
       log(`loading profile`);
 
+      cy.startBatch();
+
       profileNode = cy.$id(profile.id);
       if (profileNode.hasClass("loading")) return;
 
@@ -83,6 +97,8 @@ class FediMap {
           .addClass("stub");
       }
 
+      cy.endBatch();
+
       profileNode
         .layout({
           name: "random",
@@ -106,6 +122,8 @@ class FediMap {
 
         log(`loading follows: ${loadedFollows}/${follows.totalItems}`);
 
+        cy.startBatch();
+
         let node = cy.$id(ap.id(follow));
         if (node.empty()) {
           cy.add({ data: { id: ap.id(follow) }, classes: ["stub"] });
@@ -124,6 +142,8 @@ class FediMap {
           edge.removeClass("stub");
         }
 
+        cy.endBatch();
+
         loadedFollows += 1;
       }
 
@@ -135,6 +155,8 @@ class FediMap {
         signal?.throwIfAborted();
 
         log(`loading followers: ${loadedFollowers}/${followers.totalItems}`);
+
+        cy.startBatch();
 
         let node = cy.$id(ap.id(follower));
         if (node.empty()) {
@@ -157,6 +179,8 @@ class FediMap {
         } else {
           edge.removeClass("stub");
         }
+
+        cy.endBatch();
 
         loadedFollowers += 1;
       }

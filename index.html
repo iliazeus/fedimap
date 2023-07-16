@@ -52,72 +52,149 @@
     window.onload = async () => {
       const corsProxyPrefix = "https://corsproxy.io?";
 
+      const fullStyle = [
+        {
+          selector: "node",
+          style: {
+            label: "data(preferredUsername)",
+            "background-image": (el) => {
+              const icon = el.data("icon");
+              if (!icon?.url) return undefined;
+              return corsProxyPrefix + encodeURIComponent(icon.url);
+            },
+            "background-image-crossorigin": "anonymous",
+            "background-fit": "contain",
+          },
+        },
+        {
+          selector: "node.hover",
+          style: {
+            "z-index": 1,
+          },
+        },
+        {
+          selector: "node:selected",
+          style: {
+            "z-index": 1,
+            "border-width": "2px",
+            "border-color": "darkblue",
+          },
+        },
+        {
+          selector: "node.stub",
+          style: {
+            display: "none",
+          },
+        },
+        {
+          selector: "node.loading",
+          style: {
+            label: (el) => "⏳ " + el.data("preferredUsername"),
+          },
+        },
+        {
+          selector: "node.error",
+          style: {
+            label: (el) => "‼️ " + el.data("preferredUsername"),
+          },
+        },
+        {
+          selector: "edge",
+          style: {
+            "curve-style": "bezier",
+            "target-arrow-shape": "triangle",
+          },
+        },
+        {
+          selector: "edge.stub",
+          style: {
+            display: "none",
+          },
+        },
+        {
+          selector: "edge.node-hover, edge:selected",
+          style: {
+            "line-color": "darkblue",
+            "target-arrow-color": "darkblue",
+            "z-index": 1,
+          },
+        },
+      ];
+
+      const simpleStyle = [
+        {
+          selector: "node",
+          style: {
+            width: "5px",
+            height: "5px",
+            shape: "ellipse",
+          },
+        },
+        {
+          selector: "node.hover",
+          style: {
+            "z-index": 1,
+            label: "data(preferredUsername)",
+            "background-color": "darkblue",
+          },
+        },
+        {
+          selector: "node:selected",
+          style: {
+            "z-index": 1,
+            "border-width": "2px",
+            "border-color": "darkblue",
+          },
+        },
+        {
+          selector: "node.stub",
+          style: {
+            display: "none",
+          },
+        },
+        {
+          selector: "node.loading.hover",
+          style: {
+            label: (el) => "⏳ " + el.data("preferredUsername"),
+          },
+        },
+        {
+          selector: "node.error.hover",
+          style: {
+            label: (el) => "‼️ " + el.data("preferredUsername"),
+          },
+        },
+        {
+          selector: "edge",
+          style: {
+            width: "1px",
+            "curve-style": "bezier",
+            "target-arrow-shape": "triangle",
+            "arrow-scale": 0.5,
+          },
+        },
+        {
+          selector: "edge.stub",
+          style: {
+            display: "none",
+          },
+        },
+        {
+          selector: "edge.node-hover, edge:selected",
+          style: {
+            "line-color": "darkblue",
+            "target-arrow-color": "darkblue",
+            "z-index": 1,
+          },
+        },
+      ];
+
       const cy = (window.cy = cytoscape({
         container: document.getElementById("container"),
         minZoom: 0.5,
         maxZoom: 2,
         wheelSensitivity: 0.5,
-        style: [
-          {
-            selector: "node",
-            style: {
-              label: "data(preferredUsername)",
-              "background-image": (el) => {
-                const icon = el.data("icon");
-                if (!icon?.url) return undefined;
-                return corsProxyPrefix + encodeURIComponent(icon.url);
-              },
-              "background-image-crossorigin": "anonymous",
-              "background-fit": "contain",
-            },
-          },
-          {
-            selector: "node:selected",
-            style: {
-              "border-width": "2px",
-              "border-color": "darkblue",
-            },
-          },
-          {
-            selector: "node.stub",
-            style: {
-              display: "none",
-            },
-          },
-          {
-            selector: "node.loading",
-            style: {
-              label: (el) => "⏳ " + el.data("preferredUsername"),
-            },
-          },
-          {
-            selector: "node.error",
-            style: {
-              label: (el) => "‼️ " + el.data("preferredUsername"),
-            },
-          },
-          {
-            selector: "edge",
-            style: {
-              "curve-style": "bezier",
-              "target-arrow-shape": "triangle",
-            },
-          },
-          {
-            selector: "edge.stub",
-            style: {
-              display: "none",
-            },
-          },
-          {
-            selector: "edge.highlight",
-            style: {
-              "line-color": "darkblue",
-              "target-arrow-color": "darkblue",
-              "z-index": 1,
-            },
-          },
-        ],
+        style: fullStyle,
       }));
 
       const ap = (window.ap = new APContext({
@@ -239,13 +316,23 @@
           })
           .run();
       };
+
+      const simpleStyleCheckbox = document.getElementById("simple-style");
+      simpleStyleCheckbox.onchange = () => {
+        if (simpleStyleCheckbox.checked) {
+          cy.json({ style: simpleStyle });
+        } else {
+          cy.json({ style: fullStyle });
+        }
+      };
+      simpleStyleCheckbox.onchange();
     };
   </script>
 
   <body>
     <span id="toolbars">
       <details class="toolbar" open>
-        <summary>Add profiles</summary>
+        <summary>Load profiles</summary>
         <button id="clear">Clear</button>
         <form style="display: inline" id="form">
           <input focused id="profile" placeholder="Profile URL" />
@@ -273,6 +360,14 @@
       </details>
 
       <details class="toolbar">
+        <summary>Performance</summary>
+        <label>
+          <input id="simple-style" type="checkbox" autocomplete="off" />
+          Simple styles
+        </label>
+      </details>
+
+      <details class="toolbar">
         <summary>Help</summary>
         <p>
           Type or paste the URL or ID of a profile, then click "Add" or press
@@ -284,6 +379,17 @@
         <p>
           Each profile has to be added manually; this app will <em>not</em> load
           them automatically, it only shows the connections.
+        </p>
+        <p>
+          The current graph can be used in browser console as the
+          <code>cy</code> variable, which is a
+          <a target="_blank" href="https://js.cytoscape.org">Cytoscape.js</a>
+          object.
+        </p>
+        <p>
+          Be mindful that the graph contains invisible elements! E.g. if you
+          want to apply a layout, filter elements by the
+          <code>:visible</code> selector.
         </p>
       </details>
     </span>

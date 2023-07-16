@@ -22,11 +22,8 @@ class APContext {
         const retryAfter =
           response.headers.get("retry-after") ??
           response.headers.get("ratelimit-reset") ??
-          response.headers.get("x-ratelimit-reset");
-
-        if (!retryAfter) {
-          continue;
-        }
+          response.headers.get("x-ratelimit-reset") ??
+          5;
 
         const retryAfterMs = Number(retryAfter) * 1000;
         if (Number.isNaN(retryAfterMs)) {
