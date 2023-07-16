@@ -8,18 +8,27 @@
   <script src="ap.js"></script>
   <script src="fedimap.js"></script>
   <style>
-    .help {
-      font-size: small;
+    #toolbars {
+      display: flex;
+      flex-flow: column wrap;
+      align-items: flex-start;
     }
 
-    #toolbar {
+    details.toolbar {
       background: white;
       border: 2px solid lightgray;
       border-radius: 3px;
+      margin: 5px;
       padding: 5px;
       display: inline-block;
       position: relative;
       z-index: 5;
+    }
+
+    details.toolbar > summary {
+      padding: 5px 3px;
+      user-select: none;
+      cursor: pointer;
     }
 
     #container {
@@ -218,17 +227,6 @@
         }
       };
 
-      const showHelpCheckbox = document.getElementById("show-help");
-      showHelpCheckbox.onchange = () => {
-        const help = document.querySelectorAll(".help");
-        if (showHelpCheckbox.checked) {
-          help.forEach((el) => (el.style.display = "unset"));
-        } else {
-          help.forEach((el) => (el.style.display = "none"));
-        }
-      };
-      showHelpCheckbox.onchange();
-
       const layoutButton = document.getElementById("layout");
       layoutButton.onclick = () => {
         fedimap.cy
@@ -243,30 +241,39 @@
       };
     };
   </script>
+
   <body>
-    <div id="toolbar">
-      <button id="clear">Clear</button>
-      <form style="display: inline" id="form">
-        <input focused id="profile" placeholder="Profile URL" />
-        <input type="submit" value="Add" />
-      </form>
-      <br />
-      <button autocomplete="none" disabled class="if-selected" id="remove">Remove selected</button>
-      <button disabled class="if-selected" id="followers">
-        Load common followers for selected
-      </button>
-      <button disabled class="if-selected" id="follows">
-        Load common follows for selected
-      </button>
-      <br />
-      <button id="layout">Circle layout</button>
-      <p>
-        <label>
-          <input checked id="show-help" type="checkbox" />
-          Show help
-        </label>
-      </p>
-      <div class="help">
+    <span id="toolbars">
+      <details class="toolbar" open>
+        <summary>Add profiles</summary>
+        <button id="clear">Clear</button>
+        <form style="display: inline" id="form">
+          <input focused id="profile" placeholder="Profile URL" />
+          <input type="submit" value="Add" />
+        </form>
+        <div id="tasks"></div>
+      </details>
+
+      <details class="toolbar">
+        <summary>Actions</summary>
+        <button disabled class="if-selected" id="remove">
+          Remove selected
+        </button>
+        <button disabled class="if-selected" id="followers">
+          Load common followers for selected
+        </button>
+        <button disabled class="if-selected" id="follows">
+          Load common follows for selected
+        </button>
+      </details>
+
+      <details class="toolbar">
+        <summary>Layout</summary>
+        <button id="layout">Circle layout</button>
+      </details>
+
+      <details class="toolbar">
+        <summary>Help</summary>
         <p>
           Type or paste the URL or ID of a profile, then click "Add" or press
           Enter.
@@ -278,10 +285,11 @@
           Each profile has to be added manually; this app will <em>not</em> load
           them automatically, it only shows the connections.
         </p>
-      </div>
-      <div id="tasks"></div>
-    </div>
+      </details>
+    </span>
+
     <div id="container"></div>
+
     <template id="task-template"
       ><div>
         <small>
