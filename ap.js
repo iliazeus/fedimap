@@ -44,10 +44,10 @@ class APContext {
   #maxCacheSize;
   #fetch;
 
-  constructor(opts = { cacheSize: 1024, fetch: APContext.niceFetch }) {
+  constructor(opts = {}) {
     this.#cache = new Map();
-    this.#maxCacheSize = opts.cacheSize;
-    this.#fetch = opts.fetch;
+    this.#maxCacheSize = opts.cacheSize ?? 1024;
+    this.#fetch = opts.fetch ?? APContext.niceFetch;
   }
 
   #cacheGet(key, force) {
