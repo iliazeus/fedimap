@@ -1,6 +1,6 @@
 class APContext {
-  static niceFetch = async (url, opts) => {
-    if (opts?.corsProxyPrefix) {
+  static niceFetch = async (url, opts = {}) => {
+    if (opts.corsProxyPrefix) {
       url = opts.corsProxyPrefix + encodeURIComponent(url);
     }
 
@@ -8,12 +8,12 @@ class APContext {
 
     for (
       let retryCount = 0;
-      retryCount <= opts?.maxRetryCount ?? 0;
+      retryCount <= opts.maxRetryCount ?? 0;
       retryCount += 1
     ) {
       response = await globalThis.fetch(url, {
         ...opts,
-        signal: opts?.timeout && AbortSignal.timeout?.(opts.timeout),
+        signal: opts.timeout && AbortSignal.timeout?.(opts.timeout),
       });
 
       if (response.ok) return response;
@@ -77,13 +77,14 @@ class APContext {
     this.#cache.clear();
   }
 
-  async webfinger(id) {
+  async webfinger(id, opts = {}) {
     if (id.startsWith("@")) id = id.slice(1);
 
     const origin = new URL(id.includes(":") ? id : "https://" + id).origin;
 
     const response = await this.#fetch(
-      origin + "/.well-known/webfinger?resource=acct:" + encodeURIComponent(id)
+      origin + "/.well-known/webfinger?resource=acct:" + encodeURIComponent(id),
+      opts
     );
 
     const json = await response.json();
@@ -117,7 +118,7 @@ class APContext {
     let value = this.#cacheGet(ref, opts.force);
     if (value) return value;
 
-    if (ref.startsWith("@")) ref = await this.webfinger(ref);
+    if (ref.startsWith("@")) ref = await this.webfinger(ref, opts);
 
     const headers = { ...opts.headers, accept: "application/activity+json" };
 
@@ -164,12 +165,14 @@ class APContext {
         page = await this.object(page, opts);
         const items = page.orderedItems ?? page.items;
         if (items) yield* items;
+        if (page.id === page.next) break;
       }
     } else {
       for (let page = ref.last; page; page = page.prev) {
         page = await this.object(page, opts);
         const items = page.orderedItems ?? page.items;
         if (items) yield* items.reverse();
+        if (page.id === page.prev) break;
       }
     }
   }
