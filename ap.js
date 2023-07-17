@@ -160,18 +160,30 @@ class APContext {
     if (typeof ref !== "object" || ref === null) return;
     if (!ref.first && !ref.last) return;
 
+    let emptyPageCount = 0;
+
     if (!opts.reverse) {
       for (let page = ref.first; page; page = page.next) {
         page = await this.object(page, opts);
+
         const items = page.orderedItems ?? page.items;
         if (items) yield* items;
+
+        // protecting from bad implementations
+        if (!items || items.length === 0) emptyPageCount += 1;
+        if (emptyPageCount > 1) break;
         if (page.id === page.next) break;
       }
     } else {
       for (let page = ref.last; page; page = page.prev) {
         page = await this.object(page, opts);
+
         const items = page.orderedItems ?? page.items;
         if (items) yield* items.reverse();
+
+        // protecting from bad implementations
+        if (!items || items.length === 0) emptyPageCount += 1;
+        if (emptyPageCount > 1) break;
         if (page.id === page.prev) break;
       }
     }
