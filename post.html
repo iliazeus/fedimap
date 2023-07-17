@@ -103,6 +103,20 @@
         );
       });
 
+      Handlebars.registerHelper("documentIsAudio", (obj) => {
+        return (
+          obj.type === "Audio" ||
+          (obj.type === "Document" && obj.mediaType.startsWith("audio/"))
+        );
+      });
+
+      Handlebars.registerHelper("documentIsVideo", (obj) => {
+        return (
+          obj.type === "Video" ||
+          (obj.type === "Document" && obj.mediaType.startsWith("video/"))
+        );
+      });
+
       window.addEventListener("load", () => {
         document.body.addEventListener(
           "touchstart",
@@ -113,7 +127,30 @@
     </script>
   </head>
   <body>
-    <main></main>
+    <main>
+      <form id="post-url-form">
+        <input type="url" name="url" placeholder="Post URL" />
+        <input type="submit" value="Load" />
+      </form>
+
+      <script>
+        const form = document.querySelector("form#post-url-form");
+        const urlInput = form.querySelector("input[name='url']");
+
+        form.onsubmit = (e) => {
+          e.preventDefault();
+          if (!urlInput.value) return;
+          window.location.href =
+            "#" + new URLSearchParams({ p: urlInput.value });
+        };
+
+        window.addEventListener("load", () => {
+          document
+            .querySelector("form#post-url-form input[name='url']")
+            ?.focus();
+        });
+      </script>
+    </main>
 
     <template data-for="post" data-tag="article">
       <details class="main" open>
@@ -159,6 +196,10 @@
               loading="lazy"
               height="128px"
             />
+            {{else if (documentIsAudio this)}}
+            <audio title="{{ summary }}" src="{{ url }}" />
+            {{else if (documentIsVideo this)}}
+            <video title="{{ summary }}" src="{{ url }}" />
             {{else}} {{ mediaType }}: {{ url }} {{/if}}
           </a>
           {{/each}}
