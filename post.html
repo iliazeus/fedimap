@@ -63,6 +63,10 @@
         font-size: 150%;
       }
 
+      article details.attachments {
+        margin-left: 32px;
+      }
+
       article section.replies {
         --border-hue: calc(var(--depth) * 60deg);
         border-left: solid 3px hsl(var(--border-hue) 50% 50%);
@@ -90,6 +94,13 @@
         const minute = date.getMinutes().toString().padStart(2, "0");
 
         return `${year}-${month}-${day} ${hour}:${minute}`;
+      });
+
+      Handlebars.registerHelper("documentIsImage", (obj) => {
+        return (
+          obj.type === "Image" ||
+          (obj.type === "Document" && obj.mediaType.startsWith("image/"))
+        );
       });
 
       window.addEventListener("load", () => {
@@ -136,6 +147,23 @@
             </span>
           </header>
         </summary>
+        {{#if post.attachment}}
+        <details class="attachments">
+          <summary>attachments</summary>
+          {{#each post.attachment}}
+          <a target="_blank" href="{{ url }}">
+            {{#if (documentIsImage this)}}
+            <img
+              alt="{{ summary }}"
+              src="{{ url }}"
+              loading="lazy"
+              height="128px"
+            />
+            {{else}} {{ mediaType }}: {{ url }} {{/if}}
+          </a>
+          {{/each}}
+        </details>
+        {{/if}}
         <section class="content">{{{ post.content }}}</section>
         <section class="replies" data-for="replies" data-depth="5"></section>
       </details>
