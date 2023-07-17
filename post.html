@@ -336,7 +336,7 @@
             root: true,
             clear: true,
             container: document.querySelector("main"),
-            maxDepth: 5,
+            maxDepth: Number(params.get("d") ?? 10),
             maxBreadth: 20,
           });
         }
