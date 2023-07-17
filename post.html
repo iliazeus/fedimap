@@ -13,43 +13,30 @@
       article {
         --depth: attr(data-depth);
 
-        position: relative;
-
-        width: fit-content;
-
-        margin: 0 5px 0 5px;
-        padding: 0 5px 0 5px;
-      }
-
-      article > .hide {
-        position: absolute;
-        left: -10px;
-        z-index: 1;
-        width: 15px;
-        height: 100%;
-        cursor: pointer;
-        overflow: visible;
+        margin: 0;
+        padding: 0 0 0 5px;
       }
 
       article section.content {
         max-width: 50em;
       }
 
-      article > header {
-        display: flex;
+      article header {
+        vertical-align: middle;
+        display: inline-flex;
         flex-flow: row nowrap;
         align-items: flex-start;
         justify-content: flex-start;
       }
 
-      article > header > span {
+      article header > span {
         display: flex;
         flex-flow: column nowrap;
         align-items: flex-start;
         justify-content: space-around;
       }
 
-      article > header > * {
+      article header > * {
         margin: 0px 5px;
       }
 
@@ -57,23 +44,16 @@
         user-select: none;
         cursor: pointer;
         margin-bottom: 10px;
+        margin-left: 5px;
       }
 
-      article details.main[open] > summary {
-        display: none;
+      details > summary::marker {
+        font-size: 150%;
       }
 
       article section.replies {
-        padding-left: 2px;
-
-        --border-hue: calc(var(--depth) * 30deg);
+        --border-hue: calc(var(--depth) * 60deg);
         border-left: solid 3px hsl(var(--border-hue) 50% 50%);
-
-        cursor: pointer;
-      }
-
-      section.replies > * {
-        cursor: auto;
       }
     </style>
     <script>
@@ -99,43 +79,51 @@
 
         return `${year}-${month}-${day} ${hour}:${minute}`;
       });
+
+      window.addEventListener("load", () => {
+        document.body.addEventListener(
+          "touchstart",
+          () => (window.isTouchDevice = true),
+          { once: true }
+        );
+      });
     </script>
   </head>
   <body>
     <main></main>
 
     <template data-for="post" data-tag="article">
-      <div title="collapse post" class="hide"></div>
-      <header>
-        <a
-          target="_blank"
-          rel="author external"
-          href="{{ post.attributedTo.url }}"
-        >
-          <img
-            alt="avatar"
-            width="48"
-            height="48"
-            src="{{ post.attributedTo.icon.url }}"
-          />
-        </a>
-        <span>
-          <a
-            target="_blank"
-            rel="author external"
-            href="{{ post.attributedTo.url }}"
-          >
-            <address>{{ post.attributedTo.preferredUsername }}</address>
-          </a>
-          <a target="_blank" rel="alternate external" href="{{ post.url }}">
-            <time datetime="{{ post.published }}"
-              >{{ date post.published }}</time
-            >
-          </a>
-        </span>
-      </header>
       <details class="main" open>
-        <summary>show post</summary>
+        <summary>
+          <header>
+            <a
+              target="_blank"
+              rel="author external"
+              href="{{ post.attributedTo.url }}"
+            >
+              <img
+                alt="avatar"
+                width="48"
+                height="48"
+                src="{{ post.attributedTo.icon.url }}"
+              />
+            </a>
+            <span>
+              <a
+                target="_blank"
+                rel="author external"
+                href="{{ post.attributedTo.url }}"
+              >
+                <address>{{ post.attributedTo.preferredUsername }}</address>
+              </a>
+              <a target="_blank" rel="alternate external" href="{{ post.url }}">
+                <time datetime="{{ post.published }}"
+                  >{{ date post.published }}</time
+                >
+              </a>
+            </span>
+          </header>
+        </summary>
         <section class="content">{{{ post.content }}}</section>
         <section class="replies" data-for="replies" data-depth="5"></section>
       </details>
@@ -154,14 +142,6 @@
         postEl.innerHTML = postTpl({ post });
 
         container.appendChild(postEl);
-
-        const hideEl = postEl.querySelector(".hide");
-        const mainDetailsEl = postEl.querySelector("details.main");
-
-        hideEl.onclick = (e) => {
-          mainDetailsEl.open = !mainDetailsEl.open;
-          e.stopPropagation();
-        };
 
         return postEl;
       };
