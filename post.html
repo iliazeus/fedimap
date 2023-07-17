@@ -1,0 +1,286 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <script src="https://unpkg.com/handlebars@4.7.7/dist/handlebars.min.js"></script>
+    <script src="ap.js"></script>
+    <style>
+      article p.error {
+        color: red;
+      }
+
+      article {
+        --depth: attr(data-depth);
+
+        position: relative;
+
+        width: fit-content;
+
+        margin: 0 5px 0 5px;
+        padding: 0 5px 0 5px;
+      }
+
+      article > .hide {
+        position: absolute;
+        left: -10px;
+        z-index: 1;
+        width: 15px;
+        height: 100%;
+        cursor: pointer;
+        overflow: visible;
+      }
+
+      article section.content {
+        max-width: 50em;
+      }
+
+      article > header {
+        display: flex;
+        flex-flow: row nowrap;
+        align-items: flex-start;
+        justify-content: flex-start;
+      }
+
+      article > header > span {
+        display: flex;
+        flex-flow: column nowrap;
+        align-items: flex-start;
+        justify-content: space-around;
+      }
+
+      article > header > * {
+        margin: 0px 5px;
+      }
+
+      details > summary {
+        user-select: none;
+        cursor: pointer;
+        margin-bottom: 10px;
+      }
+
+      article details.main[open] > summary {
+        display: none;
+      }
+
+      article section.replies {
+        padding-left: 2px;
+
+        --border-hue: calc(var(--depth) * 30deg);
+        border-left: solid 3px hsl(var(--border-hue) 50% 50%);
+
+        cursor: pointer;
+      }
+
+      section.replies > * {
+        cursor: auto;
+      }
+    </style>
+    <script>
+      const corsProxyPrefix = "https://corsproxy.io/?";
+      window.ap = new APContext({
+        fetch: (url, opts = {}) =>
+          APContext.niceFetch(url, {
+            corsProxyPrefix,
+            maxRetryCount: 5,
+            timeout: 30000,
+            ...opts,
+          }),
+      });
+
+      Handlebars.registerHelper("date", (date) => {
+        date = new Date(date);
+
+        const year = date.getFullYear();
+        const month = date.getMonth().toString().padStart(2, "0");
+        const day = date.getDay().toString().padStart(2, "0");
+        const hour = date.getHours().toString().padStart(2, "0");
+        const minute = date.getMinutes().toString().padStart(2, "0");
+
+        return `${year}-${month}-${day} ${hour}:${minute}`;
+      });
+    </script>
+  </head>
+  <body>
+    <main></main>
+
+    <template data-for="post" data-tag="article">
+      <div title="collapse post" class="hide"></div>
+      <header>
+        <a
+          target="_blank"
+          rel="author external"
+          href="{{ post.attributedTo.url }}"
+        >
+          <img
+            alt="avatar"
+            width="48"
+            height="48"
+            src="{{ post.attributedTo.icon.url }}"
+          />
+        </a>
+        <span>
+          <a
+            target="_blank"
+            rel="author external"
+            href="{{ post.attributedTo.url }}"
+          >
+            <address>{{ post.attributedTo.preferredUsername }}</address>
+          </a>
+          <a target="_blank" rel="alternate external" href="{{ post.url }}">
+            <time datetime="{{ post.published }}"
+              >{{ date post.published }}</time
+            >
+          </a>
+        </span>
+      </header>
+      <details class="main" open>
+        <summary>show post</summary>
+        <section class="content">{{{ post.content }}}</section>
+        <section class="replies" data-for="replies" data-depth="5"></section>
+      </details>
+    </template>
+
+    <script>
+      const postTplEl = document.querySelector("template[data-for='post']");
+      const postTpl = Handlebars.compile(postTplEl.innerHTML);
+
+      window.renderPost = (post, { isRequested, container, depth } = {}) => {
+        const postEl = document.createElement(postTplEl.dataset.tag);
+
+        postEl.dataset.id = post.id;
+        postEl.dataset.depth = depth;
+        postEl.style.setProperty("--depth", depth);
+        postEl.innerHTML = postTpl({ post });
+
+        container.appendChild(postEl);
+
+        const hideEl = postEl.querySelector(".hide");
+        const mainDetailsEl = postEl.querySelector("details.main");
+
+        hideEl.onclick = (e) => {
+          mainDetailsEl.open = !mainDetailsEl.open;
+          e.stopPropagation();
+        };
+
+        return postEl;
+      };
+    </script>
+
+    <template data-for="post-error" data-tag="article">
+      <p class="error">{{ url }}: {{ error.message }}</p>
+    </template>
+
+    <script>
+      const postErrorTplEl = document.querySelector(
+        "template[data-for='post-error']"
+      );
+      const postErrorTpl = Handlebars.compile(postErrorTplEl.innerHTML);
+
+      window.renderPostError = (
+        error,
+        { url, isRequested, container, depth } = {}
+      ) => {
+        const postErrorEl = document.createElement(postErrorTplEl.dataset.tag);
+
+        postErrorEl.innerHTML = postErrorTpl({ url, error });
+
+        postErrorEl.dataset.depth = depth;
+        postErrorEl.style.setProperty("--depth", depth);
+
+        container.appendChild(postErrorEl);
+
+        return postErrorEl;
+      };
+    </script>
+
+    <script>
+      window.loadPost = async (
+        postOrUrl,
+        {
+          root,
+          requestedPostId,
+          container,
+          clear,
+          depth,
+          maxDepth,
+          signal,
+        } = {}
+      ) => {
+        console.log(postOrUrl);
+
+        if (!container) throw new TypeError("container");
+
+        try {
+          signal?.throwIfAborted();
+
+          depth ??= 0;
+
+          if (clear) container.replaceChildren();
+
+          const post = await ap.object(postOrUrl, { signal });
+          if (root && post.inReplyTo) {
+            return await loadPost(post.inReplyTo, {
+              requestedPostId: requestedPostId ?? post.id,
+              root,
+              container,
+              clear,
+              depth,
+              maxDepth,
+              signal,
+            });
+          }
+
+          post.attributedTo = await ap.object(post.attributedTo, { signal });
+
+          const postEl = renderPost(post, {
+            isRequested: requestedPostId === post.id,
+            container,
+            depth,
+          });
+
+          if (requestedPostId === post.id) {
+            postEl.scrollIntoView();
+          }
+
+          if (maxDepth === 1) return;
+
+          const repliesEl = postEl.querySelector("section[data-for='replies']");
+
+          const replies = await ap.object(post.replies, { signal });
+          for await (const reply of ap.collection(replies, { signal })) {
+            await loadPost(reply, {
+              container: repliesEl,
+              requestedPostId,
+              depth: depth + 1,
+              maxDepth: maxDepth && maxDepth - 1,
+              signal,
+            });
+          }
+        } catch (error) {
+          renderPostError(error, {
+            url: typeof postOrUrl === "string" ? postOrUrl : postOrUrl.id,
+            container,
+            depth,
+          });
+        }
+      };
+    </script>
+
+    <script>
+      window.onhashchange = async () => {
+        if (window.location.hash) {
+          const params = new URLSearchParams(window.location.hash.slice(1));
+          await loadPost(params.get("p"), {
+            root: true,
+            clear: true,
+            container: document.querySelector("main"),
+            maxDepth: 5,
+            maxBreadth: 20,
+          });
+        }
+      };
+      window.onload = () => window.onhashchange();
+    </script>
+  </body>
+</html>
