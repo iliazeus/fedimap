@@ -50,6 +50,10 @@ class APContext {
     this.#fetch = opts.fetch ?? APContext.niceFetch;
   }
 
+  get fetch() {
+    return this.#fetch;
+  }
+
   #cacheGet(key, force) {
     if (force) {
       this.#cache.delete(key);
@@ -171,7 +175,7 @@ class APContext {
 
         // protecting from bad implementations
         if (!items || items.length === 0) emptyPageCount += 1;
-        if (emptyPageCount > 1) break;
+        if (emptyPageCount > opts.maxEmptyPageCount ?? 1) break;
         if (page.id === page.next) break;
       }
     } else {
@@ -183,7 +187,7 @@ class APContext {
 
         // protecting from bad implementations
         if (!items || items.length === 0) emptyPageCount += 1;
-        if (emptyPageCount > 1) break;
+        if (emptyPageCount > opts.maxEmptyPageCount ?? 1) break;
         if (page.id === page.prev) break;
       }
     }
