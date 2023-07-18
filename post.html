@@ -4,7 +4,27 @@
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <script src="https://unpkg.com/handlebars@4.7.7/dist/handlebars.min.js"></script>
-    <script src="ap.js"></script>
+    <script type="module">
+      import niceFetch from "./nice-fetch.js";
+
+      window.corsProxyPrefix = "https://corsproxy.io/?";
+
+      window.niceFetch = (url, opts) =>
+        niceFetch(url, {
+          ...opts,
+          corsProxyPrefix: window.corsProxyPrefix,
+          maxRetryCount: 5,
+          timeout: 30000,
+        });
+    </script>
+    <script type="module">
+      import * as fedi from "./fedi.js";
+      import * as fediAp from "./fedi-activitypub.js";
+
+      fedi.registerApi(fediAp);
+
+      window.fedi = fedi;
+    </script>
     <style>
       article p.error {
         color: red;
@@ -77,17 +97,6 @@
       }
     </style>
     <script>
-      const corsProxyPrefix = "https://corsproxy.io/?";
-      window.ap = new APContext({
-        fetch: (url, opts = {}) =>
-          APContext.niceFetch(url, {
-            corsProxyPrefix,
-            maxRetryCount: 5,
-            timeout: 30000,
-            ...opts,
-          }),
-      });
-
       Handlebars.registerHelper("date", (date) => {
         date = new Date(date);
 
@@ -290,7 +299,11 @@
 
           if (clear) container.replaceChildren();
 
-          const post = await ap.object(postOrUrl, { signal });
+          const post = await fedi.fetch(postOrUrl, {
+            fetch: niceFetch,
+            signal,
+          });
+
           if (root && post.inReplyTo) {
             return await loadPost(post.inReplyTo, {
               requestedPostId: requestedPostId ?? post.id,
@@ -303,7 +316,10 @@
             });
           }
 
-          post.attributedTo = await ap.object(post.attributedTo, { signal });
+          post.attributedTo = await fedi.fetch(post.attributedTo, {
+            fetch: niceFetch,
+            signal,
+          });
 
           postEl = renderPost(post, {
             isRequested: requestedPostId === post.id,
@@ -321,8 +337,15 @@
 
           const repliesEl = postEl.querySelector("section[data-for='replies']");
 
-          const replies = await ap.object(post.replies, { signal });
-          for await (const reply of ap.collection(replies, { signal })) {
+          const replies = await fedi.fetch(post.replies, {
+            responseType: "collection",
+            fetch: niceFetch,
+            signal,
+          });
+
+          if (!replies) return;
+
+          for await (const reply of replies) {
             await loadPost(reply, {
               container: repliesEl,
               requestedPostId,
