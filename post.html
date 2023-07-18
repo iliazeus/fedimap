@@ -17,6 +17,10 @@
         padding: 10px 0 0 5px;
       }
 
+      article.loading > details > summary address::after {
+        content: "⏳";
+      }
+
       article section.content {
         max-width: 50em;
         padding-left: 5px;
@@ -127,30 +131,35 @@
     </script>
   </head>
   <body>
-    <main>
-      <form id="post-url-form">
-        <input type="url" name="url" placeholder="Post URL" />
-        <input type="submit" value="Load" />
-      </form>
+    <form id="post-url-form">
+      <input type="url" name="url" placeholder="Post URL" style="width: 50em" />
+      <input type="submit" value="Load" />
+    </form>
 
-      <script>
-        const form = document.querySelector("form#post-url-form");
-        const urlInput = form.querySelector("input[name='url']");
+    <script>
+      const form = document.querySelector("form#post-url-form");
+      const urlInput = form.querySelector("input[name='url']");
 
-        form.onsubmit = (e) => {
-          e.preventDefault();
-          if (!urlInput.value) return;
-          window.location.href =
-            "#" + new URLSearchParams({ p: urlInput.value });
-        };
+      form.onsubmit = (e) => {
+        e.preventDefault();
+        if (!urlInput.value) return;
+        window.location.href = "#" + new URLSearchParams({ p: urlInput.value });
+      };
 
-        window.addEventListener("load", () => {
-          document
-            .querySelector("form#post-url-form input[name='url']")
-            ?.focus();
-        });
-      </script>
-    </main>
+      window.addEventListener("load", () => {
+        document.querySelector("form#post-url-form input[name='url']")?.focus();
+      });
+
+      const updateUrlInputValue = () => {
+        const params = new URLSearchParams(window.location.hash.slice(1));
+        urlInput.value = params.get("p") ?? "";
+      };
+
+      window.addEventListener("hashchange", updateUrlInputValue);
+      window.addEventListener("load", updateUrlInputValue, { once: true });
+    </script>
+
+    <main></main>
 
     <template data-for="post" data-tag="article">
       <details class="main" open>
@@ -272,6 +281,8 @@
 
         if (!container) throw new TypeError("container");
 
+        let postEl;
+
         try {
           signal?.throwIfAborted();
 
@@ -294,11 +305,13 @@
 
           post.attributedTo = await ap.object(post.attributedTo, { signal });
 
-          const postEl = renderPost(post, {
+          postEl = renderPost(post, {
             isRequested: requestedPostId === post.id,
             container,
             depth,
           });
+
+          postEl.classList.add("loading");
 
           if (requestedPostId === post.id) {
             postEl.scrollIntoView();
@@ -324,24 +337,26 @@
             container,
             depth,
           });
+        } finally {
+          postEl?.classList.remove("loading");
         }
       };
     </script>
 
     <script>
-      window.onhashchange = async () => {
-        if (window.location.hash) {
-          const params = new URLSearchParams(window.location.hash.slice(1));
-          await loadPost(params.get("p"), {
-            root: true,
-            clear: true,
-            container: document.querySelector("main"),
-            maxDepth: Number(params.get("d") ?? 10),
-            maxBreadth: 20,
-          });
-        }
+      const run = async () => {
+        if (!window.location.hash) return;
+        const params = new URLSearchParams(window.location.hash.slice(1));
+        await loadPost(params.get("p"), {
+          root: true,
+          clear: true,
+          container: document.querySelector("main"),
+          maxDepth: Number(params.get("d") ?? 50),
+        });
       };
-      window.onload = () => window.onhashchange();
+
+      window.addEventListener("hashchange", run);
+      window.addEventListener("load", run, { once: true });
     </script>
   </body>
 </html>
