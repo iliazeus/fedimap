@@ -23,6 +23,15 @@
       window.fedi = fedi;
     </script>
     <style>
+      form {
+        max-width: 50em;
+        display: flex;
+      }
+
+      input[name="url"] {
+        flex-grow: 1;
+      }
+
       article p.error {
         color: red;
       }
@@ -138,7 +147,7 @@
   </head>
   <body>
     <form id="post-url-form">
-      <input type="url" name="url" placeholder="Post URL" style="width: 50em" />
+      <input type="url" name="url" placeholder="Post URL" />
       <input type="submit" value="Load" />
     </form>
 
