@@ -52,6 +52,7 @@ export async function fetchObjectByUrl(url, opts = {}) {
   const obj = await response.json();
   obj._fedijs = {
     fetchedFromOrigin: url.origin,
+    api: "activitypub",
   };
   return obj;
 }
@@ -79,7 +80,7 @@ export function collectionFromObject(obj, opts = {}) {
               if (items) yield* items;
               if (!items || items.length === 0) emptyPagesLoaded += 1;
               if (emptyPagesLoaded >= maxEmptyPages) return;
-              if (page.id === page.next) return;
+              if (page.id && page.id === page.next) return;
             }
           }
         : async function* () {
@@ -90,7 +91,7 @@ export function collectionFromObject(obj, opts = {}) {
               if (items) yield* items;
               if (!items || items.length === 0) emptyPagesLoaded += 1;
               if (emptyPagesLoaded >= maxEmptyPages) return;
-              if (page.id === page.prev) return;
+              if (page.id && page.id === page.prev) return;
             }
           },
   };

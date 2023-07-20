@@ -1,20 +1,29 @@
 import * as activitypub from "./fedi-activitypub.js";
 
-export const type = "mastodon-4";
+export const type = "mastodon";
 
 export async function checkUrl(url, opts = {}) {
-  const instanceV2 = await _apiFetch(`${url.origin}/api/v2/instance`, opts);
+  try {
+    const instanceV2 = await _apiFetch(`${url.origin}/api/v2/instance`, opts);
 
-  console.log(instanceV2);
+    return instanceV2.source_url === "https://github.com/mastodon/mastodon"
+      ? 1
+      : 0.8;
+  } catch {
+    const instanceV1 = await _apiFetch(`${url.origin}/api/v1/instance`, opts);
 
-  return instanceV2.source_url === "https://github.com/mastodon/mastodon"
-    ? 1
-    : 0.8;
+    if (instanceV1.pleroma?.metadata.features.includes("mastodon_api"))
+      return 0.9;
+
+    return 0.8;
+  }
 }
 
 export async function fetchObjectByUrl(url, opts = {}) {
   try {
-    return await activitypub.fetchObjectByUrl(url, opts);
+    const obj = await activitypub.fetchObjectByUrl(url, opts);
+    obj._fedijs.api = "mastodon";
+    return obj;
   } catch (error) {
     let match;
 
@@ -70,6 +79,7 @@ function _convertAccount(account, url, opts = {}) {
     "@context": "https://www.w3.org/ns/activitystreams",
     _fedijs: {
       fetchedFromOrigin: url.origin,
+      api: "mastodon",
     },
 
     type: "Person",
@@ -90,6 +100,7 @@ function _convertStatus(status, url, opts = {}) {
     "@context": "https://www.w3.org/ns/activitystreams",
     _fedijs: {
       fetchedFromOrigin: url.origin,
+      api: "mastodon",
     },
 
     type: "Note",
@@ -109,10 +120,7 @@ function _convertStatus(status, url, opts = {}) {
       ? _convertStatusRepliesCollection(
           context.descendants.filter((x) => x.in_reply_to_id === status.id),
           url,
-          {
-            ...opts,
-            status,
-          }
+          { ...opts, status }
         )
       : `${status.uri}/replies`,
   };
@@ -126,6 +134,7 @@ function _convertStatusRepliesCollection(statuses, url, opts = {}) {
     "@context": "https://www.w3.org/ns/activitystreams",
     _fedijs: {
       fetchedFromOrigin: url.origin,
+      api: "mastodon",
     },
 
     type: "Collection",
@@ -133,6 +142,12 @@ function _convertStatusRepliesCollection(statuses, url, opts = {}) {
     totalItems: status.replies_count,
 
     first: {
+      "@context": "https://www.w3.org/ns/activitystreams",
+      _fedijs: {
+        fetchedFromOrigin: url.origin,
+        api: "mastodon",
+      },
+
       type: "CollectionPage",
       id: `${status.uri}/replies?page=true`,
       items: statuses.map((x) =>
@@ -152,6 +167,7 @@ function _convertMediaAttachment(att, url, opts = {}) {
     "@context": "https://www.w3.org/ns/activitystreams",
     _fedijs: {
       fetchedFromOrigin: url.origin,
+      api: "mastodon",
     },
 
     type,

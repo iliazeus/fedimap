@@ -103,6 +103,10 @@
       }
     </style>
     <script>
+      Handlebars.registerHelper("urlOrId", (obj) => {
+        return obj.url ?? obj.id;
+      });
+
       Handlebars.registerHelper("date", (date) => {
         date = new Date(date);
 
@@ -183,7 +187,7 @@
             <a
               target="_blank"
               rel="author external"
-              href="{{ post.attributedTo.url }}"
+              href="{{ urlOrId post.attributedTo }}"
             >
               <img
                 alt="avatar"
@@ -196,14 +200,19 @@
               <a
                 target="_blank"
                 rel="author external"
-                href="{{ post.attributedTo.url }}"
+                href="{{ urlOrId post.attributedTo }}"
               >
                 <address>{{ post.attributedTo.preferredUsername }}</address>
               </a>
-              <a target="_blank" rel="alternate external" href="{{ post.url }}">
-                <time datetime="{{ post.published }}"
-                  >{{ date post.published }}</time
-                >
+              <a
+                target="_blank"
+                rel="alternate external"
+                href="{{ urlOrId post }}"
+                title="{{ post._fedijs.api }}"
+              >
+                <time datetime="{{ post.published }}">
+                  {{ date post.published }}
+                </time>
               </a>
             </span>
           </header>

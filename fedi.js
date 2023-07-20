@@ -11,6 +11,7 @@ export async function fetch(ref, opts = {}) {
       await Promise.all([
         import("./fedi-activitypub.js").catch((e) => void console.log(e)),
         import("./fedi-mastodon.js").catch((e) => void console.log(e)),
+        import("./fedi-misskey.js").catch((e) => void console.log(e)),
       ])
     ).filter((x) => !!x);
 
@@ -39,19 +40,24 @@ export async function fetch(ref, opts = {}) {
     let bestApi = _activitypub;
     let bestConfidence = 0;
 
-    for (const api of _apis) {
-      try {
-        const confidence = await api.checkUrl(url, opts);
-        if (confidence > bestConfidence) {
+    await Promise.all(
+      _apis.map((api) =>
+        api
+          .checkUrl(url, opts)
+          .then((confidence) => {
+            if (confidence > bestConfidence) {
+              bestApi = api;
+          bestConfidence = confidence;
           bestConfidence = confidence;
           bestApi = api;
-        }
-      } catch (error) {
-        log?.(error);
-      }
-    }
+              bestConfidence = confidence;
+          bestApi = api;
+            }
+          })
+          .catch((error) => log?.(error))
+      )
+    );
 
-    if (!bestApi) throw new Error(`cound not find api for ${url}`);
     const result = await _fetchByUrl(bestApi, url, opts);
 
     _apiByOrigin.set(url.origin, bestApi);
