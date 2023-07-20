@@ -7,12 +7,10 @@
     <script type="module">
       import niceFetch from "./nice-fetch.js";
 
-      window.corsProxyPrefix = "https://corsproxy.io/?";
-
       window.niceFetch = (url, opts) =>
         niceFetch(url, {
           ...opts,
-          corsProxyPrefix: window.corsProxyPrefix,
+          corsProxyPrefix: "https://corsproxy.io/?",
           maxRetryCount: 5,
           timeout: 30000,
         });
@@ -382,14 +380,21 @@
     </script>
 
     <script>
+      let abortController = null;
+
       const run = async () => {
         if (!window.location.hash) return;
         const params = new URLSearchParams(window.location.hash.slice(1));
+
+        abortController?.abort();
+        abortController = new AbortController();
+
         await loadPost(params.get("p"), {
           root: true,
           clear: true,
           container: document.querySelector("main"),
           maxDepth: Number(params.get("d") ?? 50),
+          signal: abortController.signal,
         });
       };
 

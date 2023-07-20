@@ -1,5 +1,11 @@
+const _proxiedOrigins = new Set();
+
 export const niceFetch = async (url, opts = {}) => {
-  if (opts.corsProxyPrefix) {
+  const origin = new URL(url, window.location.href).origin;
+
+  const useCorsProxy = opts.useCorsProxy || _proxiedOrigins.has(origin);
+
+  if (opts.corsProxyPrefix && useCorsProxy) {
     url = opts.corsProxyPrefix + encodeURIComponent(url);
   }
 
@@ -20,6 +26,13 @@ export const niceFetch = async (url, opts = {}) => {
         ...opts,
         signal: controller.signal,
       });
+    } catch (error) {
+      if (!useCorsProxy) {
+        _proxiedOrigins.add(origin);
+        return await niceFetch(url, { ...opts, useCorsProxy: true });
+      }
+
+      throw error;
     } finally {
       opts.signal?.removeEventListener("abort", follow);
     }
