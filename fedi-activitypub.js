@@ -73,22 +73,32 @@ export function collectionFromObject(obj, opts = {}) {
     [Symbol.asyncIterator]:
       direction === "forward"
         ? async function* () {
+            if (obj.items) yield* obj.items;
+
             let emptyPagesLoaded = 0;
+
             for (let page = obj.first; page; page = page.next) {
               page = await _fetchObject(page, opts);
+
               const items = page.orderedItems ?? page.items;
               if (items) yield* items;
+
               if (!items || items.length === 0) emptyPagesLoaded += 1;
               if (emptyPagesLoaded >= maxEmptyPages) return;
               if (page.id && page.id === page.next) return;
             }
           }
         : async function* () {
+            if (obj.items) yield* obj.items.reverse();
+
             let emptyPagesLoaded = 0;
+
             for (let page = obj.last; page; page = page.prev) {
               page = await _fetchObject(page, opts);
+
               const items = page.orderedItems ?? page.items;
-              if (items) yield* items;
+              if (items) yield* items.reverse();
+
               if (!items || items.length === 0) emptyPagesLoaded += 1;
               if (emptyPagesLoaded >= maxEmptyPages) return;
               if (page.id && page.id === page.prev) return;
