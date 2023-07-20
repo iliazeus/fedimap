@@ -26,6 +26,21 @@ export async function fetchObjectByUrl(url, opts = {}) {
   try {
     const obj = await activitypub.fetchObjectByUrl(url, opts);
     obj._fedijs.api = "misskey";
+
+    if (obj.type === "Note") {
+      const children = await _apiFetch(
+        `${url.origin}/api/notes/children`,
+        { noteId: match[1], depth: 1, limit: 50 },
+        opts
+      );
+
+      obj.replies = _convertNoteRepliesCollection(
+        children.filter((x) => x.reply.uri === obj.id),
+        url,
+        { ...opts, noteUri: note.uri ?? `${url.origin}/notes/${note.id}` }
+      );
+    }
+
     return obj;
   } catch (error) {
     let match;
@@ -97,15 +112,15 @@ function _convertNote(note, url, opts = {}) {
       ? _convertNoteRepliesCollection(
           children.filter((x) => x.replyId === note.id),
           url,
-          { ...opts, note }
+          { ...opts, noteUri: note.uri ?? `${url.origin}/notes/${note.id}` }
         )
       : undefined,
   };
 }
 
 function _convertNoteRepliesCollection(notes, url, opts = {}) {
-  const note = opts.note;
-  if (!note) throw new TypeError("note");
+  const noteUri = opts.noteUri;
+  if (!noteUri) throw new TypeError("note");
 
   return {
     "@context": "https://www.w3.org/ns/activitystreams",
@@ -115,8 +130,8 @@ function _convertNoteRepliesCollection(notes, url, opts = {}) {
     },
 
     type: "Collection",
-    id: `${url.origin}/notes/${note.id}/replies?invented-by=fedijs`,
-    totalItems: note.repliesCount,
+    id: `${noteUri}/replies?invented-by=fedijs`,
+    totalItems: notes.length,
 
     first: {
       "@context": "https://www.w3.org/ns/activitystreams",
@@ -126,7 +141,7 @@ function _convertNoteRepliesCollection(notes, url, opts = {}) {
       },
 
       type: "CollectionPage",
-      id: `${url.origin}/notes/${note.id}/replies?page=true&invented-by=fedijs`,
+      id: `${noteUri}/replies?page=true&invented-by=fedijs`,
       items: notes.map((x) =>
         _convertNote(x, url, { ...opts, children: undefined })
       ),

@@ -47,11 +47,7 @@ export async function fetch(ref, opts = {}) {
           .then((confidence) => {
             if (confidence > bestConfidence) {
               bestApi = api;
-          bestConfidence = confidence;
-          bestConfidence = confidence;
-          bestApi = api;
               bestConfidence = confidence;
-          bestApi = api;
             }
           })
           .catch((error) => log?.(error))
@@ -94,9 +90,16 @@ export async function fetch(ref, opts = {}) {
         return ref;
       }
     }
+
+    if (responseType === "object") return ref;
+
+    if (responseType === "collection") {
+      if (Symbol.asyncIterator in ref) return ref;
+      return _activitypub.collectionFromObject(ref, opts);
+    }
   }
 
-  throw new TypeError(`could not fetch ${ref}`);
+  throw new TypeError(`could not fetch ${JSON.stringify(ref)}`);
 }
 
 async function _fetchByUrl(api, url, opts = {}) {
