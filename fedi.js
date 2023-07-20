@@ -1,11 +1,24 @@
-const _apis = [];
+let _apis = null;
 const _apiByOrigin = new Map();
 
-export function registerApi(api) {
-  _apis.push(api);
-}
+let _activitypub;
 
 export async function fetch(ref, opts = {}) {
+  const responseType = opts.responseType ?? "object";
+
+  if (!_apis) {
+    _apis = (
+      await Promise.all([
+        import("./fedi-activitypub.js").catch((e) => void console.log(e)),
+        import("./fedi-mastodon.js").catch((e) => void console.log(e)),
+      ])
+    ).filter((x) => !!x);
+
+    _activitypub = _apis.find((x) => x.type === "activitypub");
+
+    console.log(_apis);
+  }
+
   const log = opts.log;
 
   if (ref === undefined || ref === null) return ref;
@@ -23,13 +36,16 @@ export async function fetch(ref, opts = {}) {
       }
     }
 
-    let bestApi = _apis.find((api) => api.type === "activitypub");
+    let bestApi = _activitypub;
     let bestConfidence = 0;
 
     for (const api of _apis) {
       try {
         const confidence = await api.checkUrl(url, opts);
-        if (confidence > bestConfidence) bestApi = api;
+        if (confidence > bestConfidence) {
+          bestConfidence = confidence;
+          bestApi = api;
+        }
       } catch (error) {
         log?.(error);
       }
@@ -54,7 +70,14 @@ export async function fetch(ref, opts = {}) {
       new URL(id).origin === fetchedFromOrigin &&
       !opts.reload
     ) {
-      return ref;
+      if (responseType === "object") {
+        return ref;
+      }
+
+      if (responseType === "collection") {
+        if (Symbol.asyncIterator in ref) return ref;
+        return _activitypub.collectionFromObject(ref, opts);
+      }
     }
 
     if (typeof id === "string") {
@@ -62,6 +85,7 @@ export async function fetch(ref, opts = {}) {
         return await fetch(ref.id, opts);
       } catch (error) {
         log?.(error);
+        return ref;
       }
     }
   }

@@ -1,21 +1,21 @@
 export const type = "activitypub";
 
 export async function checkUrl(url, opts = {}) {
-  return await checkObject(await fetchObjectByUrl(url, opts), opts);
+  return await _checkObject(await fetchObjectByUrl(url, opts), opts);
 }
 
-export async function checkObject(obj, opts = {}) {
+async function _checkObject(obj, opts = {}) {
   if (typeof obj !== "object" || obj === null) return 0;
 
   let context = obj["@context"];
 
   if (typeof context === "string") {
-    return context === "https://www.w3.org/ns/activitystreams" ? 0.9 : 0;
+    return context === "https://www.w3.org/ns/activitystreams" ? 0.5 : 0;
   }
 
   if (Array.isArray(context)) {
     return context.some((x) => x === "https://www.w3.org/ns/activitystreams")
-      ? 0.5
+      ? 0.4
       : 0;
   }
 
@@ -41,6 +41,14 @@ export async function fetchObjectByUrl(url, opts = {}) {
     signal,
   });
 
+  if (!response.ok) {
+    throw Object.assign(
+      new Error(`failed to fetch ${url}`, {
+        json: await response.json().catch(() => undefined),
+      })
+    );
+  }
+
   const obj = await response.json();
   obj._fedijs = {
     fetchedFromOrigin: url.origin,
@@ -50,7 +58,11 @@ export async function fetchObjectByUrl(url, opts = {}) {
 
 export async function fetchCollectionByUrl(url, opts = {}) {
   const obj = await fetchObjectByUrl(url, opts);
-  const maxEmptyPages = opts.maxEmptyPages ?? 2;
+  return collectionFromObject(obj, opts);
+}
+
+export function collectionFromObject(obj, opts = {}) {
+  const maxEmptyPages = (opts.maxEmptyPages ??= 2);
   const direction = opts.direction ?? (obj.first ? "forward" : "backward");
 
   return {
